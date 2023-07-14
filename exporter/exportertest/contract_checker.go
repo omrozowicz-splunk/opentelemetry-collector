@@ -5,7 +5,6 @@ package exportertest // import "go.opentelemetry.io/collector/receiver/receivert
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/exporter"
@@ -15,11 +14,8 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 // UniqueIDAttrName is the attribute name that is used in log records/spans/datapoints as the unique identifier.
@@ -28,23 +24,6 @@ const UniqueIDAttrName = "test_id"
 // UniqueIDAttrVal is the value type of the UniqueIDAttrName.
 type UniqueIDAttrVal string
 
-type Generator interface {
-	// Start the generator and prepare to generate. Will be followed by calls to Generate().
-	// Start() may be called again after Stop() is called to begin a new test scenario.
-	Start()
-
-	// Stop generating. There will be no more calls to Generate() until Start() is called again.
-	Stop()
-
-	// Generate must generate and send at least one data element (span, log record or metric data point)
-	// to the receiver and return a copy of generated element ids.
-	// The generated data must contain uniquely identifiable elements, each with a
-	// different value of attribute named UniqueIDAttrName.
-	// CreateOneLogWithID() can be used a helper to create such logs.
-	// May be called concurrently from multiple goroutines.
-	Generate() []UniqueIDAttrVal
-}
-
 type CheckConsumeContractParams struct {
 	T *testing.T
 	// Factory that allows to create a receiver.
@@ -52,13 +31,8 @@ type CheckConsumeContractParams struct {
 	// DataType to test for.
 	DataType component.DataType
 	// Config of the receiver to use.
-	Config component.Config
-	// Generator that can send data to the exporter.
-	Generator Generator
-	// GenerateCount specifies the number of times to call the generator.Generate()
-	// for each test scenario.
-	MockReceiver  mockLogsReceiver
-	GenerateCount int
+	Config       component.Config
+	MockReceiver mockLogsReceiver
 }
 
 // CheckConsumeContract checks the contract between the receiver and its next consumer. For the contract
@@ -100,38 +74,32 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 }
 
 func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func(ids idSet) error) {
-	consumer := params.MockReceiver
-	ctx := context.Background()
 
 	// Create and start the receiver.
-	var exp component.Component
-	var err error
 	switch params.DataType {
 	case component.DataTypeLogs:
-		exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), params.Config)
-	case component.DataTypeTraces:
-		exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), params.Config)
-	case component.DataTypeMetrics:
-		exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), params.Config)
+		checkLogs(params)
+	//case component.DataTypeTraces:
+	//	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), params.Config)
+	//case component.DataTypeMetrics:
+	//	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), params.Config)
 	default:
 		require.FailNow(params.T, "must specify a valid DataType to test for")
 	}
 
-	require.NoError(params.T, err)
-	err = exp.Start(ctx, componenttest.NewNopHost())
-	require.NoError(params.T, err)
-	defer consumer.srv.GracefulStop()
-	// Begin generating data to the receiver.
-
-	//var generatedIds idSet
-	//var generatedIndex int64
-	//var mux sync.Mutex
-	var wg sync.WaitGroup
-
-	const concurrency = 4
-
-	params.Generator.Start()
-	defer params.Generator.Stop()
+	//require.NoError(params.T, err)
+	//err = exp.Start(ctx, componenttest.NewNopHost())
+	//require.NoError(params.T, err)
+	//defer receiver.srv.GracefulStop()
+	//// Begin generating data to the receiver.
+	//
+	////var generatedIds idSet
+	////var generatedIndex int64
+	////var mux sync.Mutex
+	//var wg sync.WaitGroup
+	//
+	//const concurrency = 4
+	//receiver.setNonPermanentError()
 
 	// Create concurrent goroutines that use the generator.
 	// The total number of generator calls will be equal to params.GenerateCount.
@@ -154,12 +122,11 @@ func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFun
 	//		}
 	//	}()
 	//}
-	//ld := plog.NewLogs()
-	//exp.
-	items := consumer.totalItems
-	print(items)
-	// Wait until all generator goroutines are done.
-	wg.Wait()
+
+	//items := consumer.totalItems
+	//print(items)
+	//// Wait until all generator goroutines are done.
+	//wg.Wait()
 	//
 	//// Wait until all data is seen by the consumer.
 	//assert.Eventually(params.T, func() bool {
@@ -200,6 +167,42 @@ func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFun
 	//	len(consumer.droppedIds),
 	//	consumer.nonPermanentFailures,
 	//)
+}
+
+func checkLogs(params CheckConsumeContractParams) {
+	receiver := params.MockReceiver
+	ctx := context.Background()
+
+	// Create and start the receiver.
+	var exp exporter.Logs
+	var err error
+	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), params.Config)
+
+	require.NoError(params.T, err)
+	err = exp.Start(ctx, componenttest.NewNopHost())
+	require.NoError(params.T, err)
+	defer receiver.srv.GracefulStop()
+	defer func(exp exporter.Logs, ctx context.Context) {
+		err := exp.Shutdown(ctx)
+		if err != nil {
+
+		}
+	}(exp, ctx)
+	// Begin generating data to the receiver.
+
+	//var generatedIds idSet
+	//var generatedIndex int64
+	//var mux sync.Mutex
+	var wg sync.WaitGroup
+
+	const concurrency = 4
+	receiver.setNonPermanentError()
+
+	ld := plog.NewLogs()
+	err = exp.ConsumeLogs(ctx, ld)
+	fmt.Printf("%d", receiver.totalItems)
+	// Wait until all generator goroutines are done.
+	wg.Wait()
 }
 
 // idSet is a set of unique ids of data elements used in the test (logs, spans or metric data points).
@@ -274,9 +277,6 @@ func (ds *idSet) union(other idSet) (union idSet, duplicates []UniqueIDAttrVal) 
 // between the receiver and it next consumer.
 type consumeDecisionFunc func(ids idSet) error
 
-var errNonPermanent = errors.New("non permanent error")
-var errPermanent = errors.New("permanent error")
-
 // randomNonPermanentErrorConsumeDecision is a decision function that succeeds approximately
 // half of the time and fails with a non-permanent error the rest of the time.
 func randomNonPermanentErrorConsumeDecision(_ idSet) error {
@@ -308,122 +308,6 @@ func randomErrorsConsumeDecision(_ idSet) error {
 		return errNonPermanent
 	}
 	return nil
-}
-
-// mockConsumer accepts or drops the data from the receiver based on the decision made by
-// consumeDecisionFunc and remembers the accepted and dropped data sets for later checks.
-// mockConsumer implements all 3 consume functions: ConsumeLogs/ConsumeTraces/ConsumeMetrics
-// and can be used for testing any of the 3 signals.
-type mockConsumer struct {
-	t                    *testing.T
-	consumeDecisionFunc  consumeDecisionFunc
-	mux                  sync.Mutex
-	acceptedIds          idSet
-	droppedIds           idSet
-	nonPermanentFailures int
-}
-
-func (m *mockConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{}
-}
-
-func (m *mockConsumer) ConsumeTraces(_ context.Context, data ptrace.Traces) error {
-	ids, err := idSetFromTraces(data)
-	require.NoError(m.t, err)
-	return m.consume(ids)
-}
-
-// idSetFromTraces computes an idSet from given ptrace.Traces. The idSet will contain ids of all spans.
-func idSetFromTraces(data ptrace.Traces) (idSet, error) {
-	ds := map[UniqueIDAttrVal]bool{}
-	rss := data.ResourceSpans()
-	for i := 0; i < rss.Len(); i++ {
-		ils := rss.At(i).ScopeSpans()
-		for j := 0; j < ils.Len(); j++ {
-			ss := ils.At(j).Spans()
-			for k := 0; k < ss.Len(); k++ {
-				elem := ss.At(k)
-				key, exists := elem.Attributes().Get(UniqueIDAttrName)
-				if !exists {
-					return ds, fmt.Errorf("invalid data element, attribute %q is missing", UniqueIDAttrName)
-				}
-				if key.Type() != pcommon.ValueTypeStr {
-					return ds, fmt.Errorf("invalid data element, attribute %q is wrong type %v", UniqueIDAttrName, key.Type())
-				}
-				ds[UniqueIDAttrVal(key.Str())] = true
-			}
-		}
-	}
-	return ds, nil
-}
-
-func (m *mockConsumer) ConsumeLogs(_ context.Context, data plog.Logs) error {
-	ids, err := idSetFromLogs(data)
-	require.NoError(m.t, err)
-	return m.consume(ids)
-}
-
-// idSetFromLogs computes an idSet from given plog.Logs. The idSet will contain ids of all log records.
-func idSetFromLogs(data plog.Logs) (idSet, error) {
-	ds := map[UniqueIDAttrVal]bool{}
-	rss := data.ResourceLogs()
-	for i := 0; i < rss.Len(); i++ {
-		ils := rss.At(i).ScopeLogs()
-		for j := 0; j < ils.Len(); j++ {
-			ss := ils.At(j).LogRecords()
-			for k := 0; k < ss.Len(); k++ {
-				elem := ss.At(k)
-				key, exists := elem.Attributes().Get(UniqueIDAttrName)
-				if !exists {
-					return ds, fmt.Errorf("invalid data element, attribute %q is missing", UniqueIDAttrName)
-				}
-				if key.Type() != pcommon.ValueTypeStr {
-					return ds, fmt.Errorf("invalid data element, attribute %q is wrong type %v", UniqueIDAttrName, key.Type())
-				}
-				ds[UniqueIDAttrVal(key.Str())] = true
-			}
-		}
-	}
-	return ds, nil
-}
-
-// TODO: Implement mockConsumer.ConsumeMetrics()
-
-// consume the elements with the specified ids, regardless of the element data type.
-func (m *mockConsumer) consume(ids idSet) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-
-	// Consult with user-defined decision function to decide what to do with the data.
-	if err := m.consumeDecisionFunc(ids); err != nil {
-		// The decision is to return an error to the receiver.
-
-		if consumererror.IsPermanent(err) {
-			// It is a permanent error, which means we need to drop the data.
-			// Remember the ids of dropped elements.
-			duplicates := m.droppedIds.merge(ids)
-			require.Empty(m.t, duplicates, "elements that were dropped previously were sent again")
-		} else {
-			// It is a non-permanent error. Don't add it to the drop list. Remember the number of
-			// failures to print at the end of the test.
-			m.nonPermanentFailures++
-		}
-		// Return the error to the receiver.
-		return err
-	}
-
-	// The decision is a success. Remember the ids of the data in the accepted list.
-	duplicates := m.acceptedIds.merge(ids)
-	require.Empty(m.t, duplicates, "elements that were accepted previously were sent again")
-	return nil
-}
-
-// Calculate union of accepted and dropped ids.
-// Returns the union and the list of duplicates between the two sets (if any)
-func (m *mockConsumer) acceptedAndDropped() (acceptedAndDropped idSet, duplicates []UniqueIDAttrVal) {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-	return m.acceptedIds.union(m.droppedIds)
 }
 
 func CreateOneLogWithID(id UniqueIDAttrVal) plog.Logs {
