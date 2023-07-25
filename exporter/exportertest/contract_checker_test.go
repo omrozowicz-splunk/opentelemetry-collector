@@ -4,7 +4,9 @@
 package exportertest
 
 import (
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
+	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"net"
@@ -92,19 +94,21 @@ import (
 // receiver and next consumer.
 func TestConsumeContract(t *testing.T) {
 
-	// Number of log records to send per scenario.
-	const logsPerTest = 100
+	ln, err := net.Listen("tcp", "localhost:1234")
+	mockReceiver := otlpLogsReceiverOnGRPCServer(ln)
+	require.NoError(t, err, "Failed to find an available address to run the gRPC server: %v", err)
 
 	cfg := &otlpexporter.Config{
-		TimeoutSettings:    exporterhelper.TimeoutSettings{},
-		QueueSettings:      exporterhelper.QueueSettings{},
-		RetrySettings:      exporterhelper.RetrySettings{},
-		GRPCClientSettings: configgrpc.GRPCClientSettings{Endpoint: "localhost:1234"},
+		TimeoutSettings: exporterhelper.TimeoutSettings{},
+		QueueSettings:   exporterhelper.QueueSettings{Enabled: false},
+		RetrySettings:   exporterhelper.RetrySettings{},
+		GRPCClientSettings: configgrpc.GRPCClientSettings{
+			Endpoint: ln.Addr().String(),
+			TLSSetting: configtls.TLSClientSetting{
+				Insecure: true,
+			}},
 	}
-	//exporter := otlpexporter.NewFactory()
-	ln, _ := net.Listen("tcp", "localhost:1234")
-	mockReceiver := *otlpLogsReceiverOnGRPCServer(ln)
-	//exmapleFactory := newExampleFactory()
+
 	params := CheckConsumeContractParams{
 		T:            t,
 		Factory:      otlpexporter.NewFactory(),
@@ -112,6 +116,7 @@ func TestConsumeContract(t *testing.T) {
 		Config:       cfg,
 		MockReceiver: mockReceiver,
 	}
+	defer mockReceiver.srv.GracefulStop()
 
 	// Run the contract checker. This will trigger test failures if any problems are found.
 	CheckConsumeContract(params)

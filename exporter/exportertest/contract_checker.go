@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"math/rand"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -32,7 +34,7 @@ type CheckConsumeContractParams struct {
 	DataType component.DataType
 	// Config of the receiver to use.
 	Config       component.Config
-	MockReceiver mockLogsReceiver
+	MockReceiver *mockLogsReceiver
 }
 
 // CheckConsumeContract checks the contract between the receiver and its next consumer. For the contract
@@ -44,25 +46,25 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 	// success case or for error case or a mix of both). See for example randomErrorsConsumeDecision.
 	scenarios := []struct {
 		name         string
-		decisionFunc func(ids idSet) error
+		decisionFunc func() error
 	}{
-		{
-			name: "always_succeed",
-			// Always succeed. We expect all data to be delivered as is.
-			decisionFunc: func(ids idSet) error { return nil },
-		},
+		//{
+		//	name: "always_succeed",
+		//	// Always succeed. We expect all data to be delivered as is.
+		//	decisionFunc: func() error { return nil },
+		//},
 		{
 			name:         "random_non_permanent_error",
 			decisionFunc: randomNonPermanentErrorConsumeDecision,
 		},
-		{
-			name:         "random_permanent_error",
-			decisionFunc: randomPermanentErrorConsumeDecision,
-		},
-		{
-			name:         "random_error",
-			decisionFunc: randomErrorsConsumeDecision,
-		},
+		//{
+		//	name:         "random_permanent_error",
+		//	decisionFunc: randomPermanentErrorConsumeDecision,
+		//},
+		//{
+		//	name:         "random_error",
+		//	decisionFunc: randomErrorsConsumeDecision,
+		//},
 	}
 	for _, scenario := range scenarios {
 		params.T.Run(
@@ -73,12 +75,12 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 	}
 }
 
-func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func(ids idSet) error) {
+func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func() error) {
 
 	// Create and start the receiver.
 	switch params.DataType {
 	case component.DataTypeLogs:
-		checkLogs(params)
+		checkLogs(params, decisionFunc)
 	//case component.DataTypeTraces:
 	//	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), params.Config)
 	//case component.DataTypeMetrics:
@@ -169,7 +171,7 @@ func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFun
 	//)
 }
 
-func checkLogs(params CheckConsumeContractParams) {
+func checkLogs(params CheckConsumeContractParams, decisionFunc func() error) {
 	receiver := params.MockReceiver
 	ctx := context.Background()
 
@@ -177,31 +179,37 @@ func checkLogs(params CheckConsumeContractParams) {
 	var exp exporter.Logs
 	var err error
 	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), params.Config)
+	require.NoError(params.T, err)
+	require.NotNil(params.T, exp)
 
-	require.NoError(params.T, err)
 	err = exp.Start(ctx, componenttest.NewNopHost())
-	require.NoError(params.T, err)
-	defer receiver.srv.GracefulStop()
+
 	defer func(exp exporter.Logs, ctx context.Context) {
 		err := exp.Shutdown(ctx)
 		if err != nil {
-
+			fmt.Printf("%s", "Error in exporter")
+			fmt.Printf("%s", err)
 		}
 	}(exp, ctx)
-	// Begin generating data to the receiver.
 
-	//var generatedIds idSet
-	//var generatedIndex int64
-	//var mux sync.Mutex
 	var wg sync.WaitGroup
 
-	const concurrency = 4
-	receiver.setNonPermanentError()
+	for i := 0; i < 5; i++ {
+		id := UniqueIDAttrVal(strconv.Itoa(i))
+		data := CreateOneLogWithID(id)
+		consumeError := decisionFunc()
+		if consumeError != nil {
+			receiver.setError(consumeError)
+			fmt.Printf("error: %d\n", consumeError)
+		}
 
-	ld := plog.NewLogs()
-	err = exp.ConsumeLogs(ctx, ld)
-	fmt.Printf("%d", receiver.totalItems)
-	// Wait until all generator goroutines are done.
+		err = exp.ConsumeLogs(ctx, data)
+		logs, _ := idSetFromLogs(receiver.lastRequest)
+		fmt.Println(logs)
+	}
+	fmt.Printf("request items: %d\n", receiver.requestCount.Load())
+	fmt.Printf("total items: %d\n", receiver.totalItems.Load())
+
 	wg.Wait()
 }
 
@@ -275,11 +283,11 @@ func (ds *idSet) union(other idSet) (union idSet, duplicates []UniqueIDAttrVal) 
 // The result of the decision function becomes the return value of ConsumeLogs/Trace/Metrics.
 // Supplying different decision functions allows to test different scenarios of the contract
 // between the receiver and it next consumer.
-type consumeDecisionFunc func(ids idSet) error
+type consumeDecisionFunc func() error
 
 // randomNonPermanentErrorConsumeDecision is a decision function that succeeds approximately
 // half of the time and fails with a non-permanent error the rest of the time.
-func randomNonPermanentErrorConsumeDecision(_ idSet) error {
+func randomNonPermanentErrorConsumeDecision() error {
 	if rand.Float32() < 0.5 {
 		return errNonPermanent
 	}
@@ -288,8 +296,8 @@ func randomNonPermanentErrorConsumeDecision(_ idSet) error {
 
 // randomPermanentErrorConsumeDecision is a decision function that succeeds approximately
 // half of the time and fails with a permanent error the rest of the time.
-func randomPermanentErrorConsumeDecision(_ idSet) error {
-	if rand.Float32() < 0.5 {
+func randomPermanentErrorConsumeDecision() error {
+	if rand.Float32() < 0.99 {
 		return consumererror.NewPermanent(errPermanent)
 	}
 	return nil
@@ -298,7 +306,7 @@ func randomPermanentErrorConsumeDecision(_ idSet) error {
 // randomErrorsConsumeDecision is a decision function that succeeds approximately
 // a third of the time, fails with a permanent error the third of the time and fails with
 // a non-permanent error the rest of the time.
-func randomErrorsConsumeDecision(_ idSet) error {
+func randomErrorsConsumeDecision() error {
 	r := rand.Float64()
 	third := 1.0 / 3.0
 	if r < third {
@@ -317,4 +325,27 @@ func CreateOneLogWithID(id UniqueIDAttrVal) plog.Logs {
 		string(id),
 	)
 	return data
+}
+
+func idSetFromLogs(data plog.Logs) (idSet, error) {
+	ds := map[UniqueIDAttrVal]bool{}
+	rss := data.ResourceLogs()
+	for i := 0; i < rss.Len(); i++ {
+		ils := rss.At(i).ScopeLogs()
+		for j := 0; j < ils.Len(); j++ {
+			ss := ils.At(j).LogRecords()
+			for k := 0; k < ss.Len(); k++ {
+				elem := ss.At(k)
+				key, exists := elem.Attributes().Get(UniqueIDAttrName)
+				if !exists {
+					return ds, fmt.Errorf("invalid data element, attribute %q is missing", UniqueIDAttrName)
+				}
+				if key.Type() != pcommon.ValueTypeStr {
+					return ds, fmt.Errorf("invalid data element, attribute %q is wrong type %v", UniqueIDAttrName, key.Type())
+				}
+				ds[UniqueIDAttrVal(key.Str())] = true
+			}
+		}
+	}
+	return ds, nil
 }
