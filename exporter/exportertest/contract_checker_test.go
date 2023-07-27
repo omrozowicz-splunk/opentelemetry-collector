@@ -5,14 +5,13 @@ package exportertest
 
 import (
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"net"
 	"testing"
-
-	"go.opentelemetry.io/collector/component"
 )
 
 // This file is an example that demonstrates how to use the CheckConsumeContract() function.
@@ -101,14 +100,13 @@ func TestConsumeContract(t *testing.T) {
 	cfg := &otlpexporter.Config{
 		TimeoutSettings: exporterhelper.TimeoutSettings{},
 		QueueSettings:   exporterhelper.QueueSettings{Enabled: false},
-		RetrySettings:   exporterhelper.RetrySettings{},
+		RetrySettings:   exporterhelper.NewDefaultRetrySettings(),
 		GRPCClientSettings: configgrpc.GRPCClientSettings{
 			Endpoint: ln.Addr().String(),
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: true,
 			}},
 	}
-
 	params := CheckConsumeContractParams{
 		T:            t,
 		Factory:      otlpexporter.NewFactory(),
