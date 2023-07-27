@@ -1,3 +1,5 @@
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
 package exportertest
 
 import (
@@ -13,7 +15,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"net"
 	"sync"
@@ -29,7 +30,6 @@ type mockReceiver struct {
 	totalItems          *atomic.Int32
 	totalErrors         *atomic.Int32
 	mux                 sync.Mutex
-	metadata            metadata.MD
 	exportErrorFunction func() error
 }
 
@@ -52,12 +52,6 @@ type mockTracesReceiver struct {
 	mockReceiver
 	exportResponse func() ptraceotlp.ExportResponse
 	lastRequest    ptrace.Traces
-}
-
-func (r *mockReceiver) getMetadata() metadata.MD {
-	r.mux.Lock()
-	defer r.mux.Unlock()
-	return r.metadata
 }
 
 func (r *mockReceiver) setExportErrorFunction(decisionFunction func() error) {
@@ -88,7 +82,6 @@ func (r *mockLogsReceiver) Export(ctx context.Context, req plogotlp.ExportReques
 	defer r.mux.Unlock()
 	r.totalItems.Add(int32(ld.LogRecordCount()))
 	r.lastRequest = ld
-	r.metadata, _ = metadata.FromIncomingContext(ctx)
 	return r.exportResponse(), nil
 }
 

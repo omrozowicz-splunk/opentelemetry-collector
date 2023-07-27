@@ -123,8 +123,11 @@ func checkLogs(params CheckConsumeContractParams, decisionFunc func() error) {
 		err = exp.ConsumeLogs(ctx, data)
 	}
 
+	// The overall number of requests sent by exporter
 	fmt.Printf("requested items: %d\n", receiver.requestCount.Load())
+	// Successfully delivered items
 	fmt.Printf("total items: %d\n", receiver.totalItems.Load())
+	// Number of errors that happened
 	fmt.Printf("number of errors: %d\n", receiver.totalErrors.Load())
 }
 
