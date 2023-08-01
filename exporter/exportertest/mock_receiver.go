@@ -88,12 +88,12 @@ func (r *mockReceiver) setExportErrorFunction(decisionFunction func() error) {
 func (r *mockLogsReceiver) Export(_ context.Context, req plogotlp.ExportRequest) (plogotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	logs, _ := idFromLogs(req.Logs())
+	logId, _ := idFromLogs(req.Logs())
 	if generatedError != nil {
-		r.processError(generatedError, "log", logs)
+		r.processError(generatedError, "log", logId)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent log number:", logs)
+	fmt.Println("Successfully sent log number:", logId)
 	ld := req.Logs()
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -105,12 +105,12 @@ func (r *mockLogsReceiver) Export(_ context.Context, req plogotlp.ExportRequest)
 func (r *mockTracesReceiver) Export(_ context.Context, req ptraceotlp.ExportRequest) (ptraceotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	traces, _ := idFromTraces(req.Traces())
+	traceId, _ := idFromTraces(req.Traces())
 	if generatedError != nil {
-		r.processError(generatedError, "trace", traces)
+		r.processError(generatedError, "trace", traceId)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent trace number:", traces)
+	fmt.Println("Successfully sent trace number:", traceId)
 	td := req.Traces()
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -122,12 +122,12 @@ func (r *mockTracesReceiver) Export(_ context.Context, req ptraceotlp.ExportRequ
 func (r *mockMetricsReceiver) Export(_ context.Context, req pmetricotlp.ExportRequest) (pmetricotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	traces, _ := idFromMetrics(req.Metrics())
+	metricId, _ := idFromMetrics(req.Metrics())
 	if generatedError != nil {
-		r.processError(generatedError, "metric", traces)
+		r.processError(generatedError, "metric", metricId)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent metric number:", traces)
+	fmt.Println("Successfully sent metric number:", metricId)
 	md := req.Metrics()
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -136,14 +136,14 @@ func (r *mockMetricsReceiver) Export(_ context.Context, req pmetricotlp.ExportRe
 	return r.exportResponse(), nil
 }
 
-func (r *mockReceiver) processError(err error, dataType string, numberOfElements string) {
+func (r *mockReceiver) processError(err error, dataType string, idOfElement string) {
 	if consumererror.IsPermanent(err) {
 		fmt.Println("permanent error happened")
-		fmt.Printf("Dropping %s number: %s\n", dataType, numberOfElements)
+		fmt.Printf("Dropping %s number: %s\n", dataType, idOfElement)
 		r.reqCounter.error.permanent++
 	} else {
 		fmt.Println("non-permanent error happened")
-		fmt.Printf("Retrying %s number: %s\n", dataType, numberOfElements)
+		fmt.Printf("Retrying %s number: %s\n", dataType, idOfElement)
 		r.reqCounter.error.nonpermanent++
 	}
 }
