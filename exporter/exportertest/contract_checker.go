@@ -39,9 +39,6 @@ type CheckConsumeContractParams struct {
 	MockReceiver         interface{}
 }
 
-// CheckConsumeContract checks the contract between the receiver and its next consumer. For the contract
-// description see ../doc.go. The checker will detect violations of contract on different scenarios: on success,
-// on permanent and non-permanent errors and mix of error types.
 func CheckConsumeContract(params CheckConsumeContractParams) {
 	// Different scenarios to test for.
 	// The decision function defines the testing scenario (i.e. to test for
