@@ -88,12 +88,12 @@ func (r *mockReceiver) setExportErrorFunction(decisionFunction func() error) {
 func (r *mockLogsReceiver) Export(_ context.Context, req plogotlp.ExportRequest) (plogotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	logId, _ := idFromLogs(req.Logs())
+	logID, _ := idFromLogs(req.Logs())
 	if generatedError != nil {
-		r.processError(generatedError, "log", logId)
+		r.processError(generatedError, "log", logID)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent log number:", logId)
+	fmt.Println("Successfully sent log number:", logID)
 	ld := req.Logs()
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -105,12 +105,12 @@ func (r *mockLogsReceiver) Export(_ context.Context, req plogotlp.ExportRequest)
 func (r *mockTracesReceiver) Export(_ context.Context, req ptraceotlp.ExportRequest) (ptraceotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	traceId, _ := idFromTraces(req.Traces())
+	traceID, _ := idFromTraces(req.Traces())
 	if generatedError != nil {
-		r.processError(generatedError, "trace", traceId)
+		r.processError(generatedError, "trace", traceID)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent trace number:", traceId)
+	fmt.Println("Successfully sent trace number:", traceID)
 	td := req.Traces()
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -122,12 +122,12 @@ func (r *mockTracesReceiver) Export(_ context.Context, req ptraceotlp.ExportRequ
 func (r *mockMetricsReceiver) Export(_ context.Context, req pmetricotlp.ExportRequest) (pmetricotlp.ExportResponse, error) {
 	r.reqCounter.total++
 	generatedError := r.exportErrorFunction()
-	metricId, _ := idFromMetrics(req.Metrics())
+	metricID, _ := idFromMetrics(req.Metrics())
 	if generatedError != nil {
-		r.processError(generatedError, "metric", metricId)
+		r.processError(generatedError, "metric", metricID)
 		return r.exportResponse(), generatedError
 	}
-	fmt.Println("Successfully sent metric number:", metricId)
+	fmt.Println("Successfully sent metric number:", metricID)
 	md := req.Metrics()
 	r.mux.Lock()
 	defer r.mux.Unlock()
