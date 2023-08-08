@@ -8,14 +8,17 @@ require (
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/collector v0.82.0
 	go.opentelemetry.io/collector/component v0.82.0
+	go.opentelemetry.io/collector/config/configgrpc v0.82.0
+	go.opentelemetry.io/collector/config/configtls v0.82.0
 	go.opentelemetry.io/collector/consumer v0.82.0
+	go.opentelemetry.io/collector/exporter/otlpexporter v0.82.0
 	go.opentelemetry.io/collector/extension v0.82.0
 	go.opentelemetry.io/collector/pdata v1.0.0-rcv0014
 	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/sdk v1.16.0
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/zap v1.24.0
-	google.golang.org/grpc v1.56.2
+	google.golang.org/grpc v1.57.0
 )
 
 require (
@@ -23,7 +26,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
@@ -50,25 +52,18 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
-	github.com/rs/cors v1.9.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v0.82.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v0.82.0 // indirect
-	go.opentelemetry.io/collector/config/configgrpc v0.82.0 // indirect
-	go.opentelemetry.io/collector/config/confighttp v0.82.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.82.0 // indirect
 	go.opentelemetry.io/collector/config/configopaque v0.82.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.82.0 // indirect
-	go.opentelemetry.io/collector/config/configtls v0.82.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.82.0 // indirect
 	go.opentelemetry.io/collector/confmap v0.82.0 // indirect
-	go.opentelemetry.io/collector/exporter/otlpexporter v0.82.0 // indirect
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.82.0 // indirect
 	go.opentelemetry.io/collector/extension/auth v0.82.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.0.0-rcv0014 // indirect
 	go.opentelemetry.io/collector/processor v0.82.0 // indirect
 	go.opentelemetry.io/collector/receiver v0.82.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.1-0.20230612162650-64be7e574a17 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.39.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.39.0 // indirect
@@ -113,24 +108,21 @@ replace go.opentelemetry.io/collector/config/confignet => ../config/confignet
 
 replace go.opentelemetry.io/collector/config/configtelemetry => ../config/configtelemetry
 
-replace go.opentelemetry.io/collector/exporter/otlpexporter => ./otlpexporter
-
-replace go.opentelemetry.io/collector/exporter/otlphttpexporter => ./otlphttpexporter
-
-replace go.opentelemetry.io/collector/config/internal => ../config/internal
-
-replace go.opentelemetry.io/collector/config/configtls => ../config/configtls
-
-replace go.opentelemetry.io/collector/config/confighttp => ../config/confighttp
-
-replace go.opentelemetry.io/collector/extension/auth => ../extension/auth
-
-replace go.opentelemetry.io/collector/config/configgrpc => ../config/configgrpc
-
-replace go.opentelemetry.io/collector/config/configopaque => ../config/configopaque
+// ambiguous import: found package cloud.google.com/go/compute/metadata in multiple modules
+replace cloud.google.com/go => cloud.google.com/go v0.110.2
 
 replace go.opentelemetry.io/collector/config/configcompression => ../config/configcompression
 
+replace go.opentelemetry.io/collector/exporter/otlpexporter => ./otlpexporter
+
+replace go.opentelemetry.io/collector/config/configtls => ../config/configtls
+
+replace go.opentelemetry.io/collector/config/internal => ../config/internal
+
 replace go.opentelemetry.io/collector/config/configauth => ../config/configauth
 
-replace go.opentelemetry.io/collector/receiver/otlpreceiver => ../receiver/otlpreceiver
+replace go.opentelemetry.io/collector/extension/auth => ../extension/auth
+
+replace go.opentelemetry.io/collector/config/configopaque => ../config/configopaque
+
+replace go.opentelemetry.io/collector/config/configgrpc => ../config/configgrpc
