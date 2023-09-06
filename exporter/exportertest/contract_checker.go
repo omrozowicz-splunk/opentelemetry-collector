@@ -6,6 +6,7 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"testing"
 
@@ -32,9 +33,9 @@ type CheckConsumeContractParams struct {
 	// DataType to test for.
 	DataType component.DataType
 	// Config of the exporter to use.
-	Config               component.Config
+	Config               func(endpointAddress string) component.Config
 	NumberOfTestElements int
-	MockReceiver         MockReceiver
+	MockReceiverFactory  MockReceiverFactory
 }
 
 func CheckConsumeContract(params CheckConsumeContractParams) {
@@ -78,27 +79,30 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 }
 
 func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, requestCounter)) {
-
+	ln, _ := net.Listen("tcp", "localhost:0")
+	//require.NoError(err, "Failed to find an available address to run the gRPC server: %v", err)
+	rcv := params.MockReceiverFactory(decisionFunc, params.DataType, ln)
 	switch params.DataType {
 	case component.DataTypeLogs:
-		checkLogs(params, decisionFunc, checkIfTestPassed)
+		checkLogs(params, rcv, checkIfTestPassed)
 	case component.DataTypeTraces:
-		checkTraces(params, decisionFunc, checkIfTestPassed)
+		checkTraces(params, rcv, checkIfTestPassed)
 	case component.DataTypeMetrics:
-		checkMetrics(params, decisionFunc, checkIfTestPassed)
+		checkMetrics(params, rcv, checkIfTestPassed)
 	default:
 		require.FailNow(params.T, "must specify a valid DataType to test for")
 	}
 
 }
 
-func checkMetrics(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, requestCounter)) {
-	receiver := params.MockReceiver
+func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Metrics
 	var err error
-	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), params.Config)
+	address := mockReceiver.getListenerAddress()
+	cfg := params.Config(address)
+	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -108,10 +112,9 @@ func checkMetrics(params CheckConsumeContractParams, decisionFunc func() error, 
 	defer func(exp exporter.Metrics, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		receiver.clearCounters()
+		mockReceiver.clearCounters()
+		mockReceiver.srvStop()
 	}(exp, ctx)
-
-	receiver.setExportErrorFunction(decisionFunc)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
 		id := UniqueIDAttrVal(strconv.Itoa(i))
@@ -121,7 +124,7 @@ func checkMetrics(params CheckConsumeContractParams, decisionFunc func() error, 
 		err = exp.ConsumeMetrics(ctx, data)
 	}
 
-	reqCounter := receiver.getReqCounter()
+	reqCounter := mockReceiver.getReqCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items
@@ -132,13 +135,14 @@ func checkMetrics(params CheckConsumeContractParams, decisionFunc func() error, 
 	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
 }
 
-func checkTraces(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, requestCounter)) {
-	receiver := params.MockReceiver
+func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Traces
 	var err error
-	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), params.Config)
+	address := mockReceiver.getListenerAddress()
+	cfg := params.Config(address)
+	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -148,10 +152,9 @@ func checkTraces(params CheckConsumeContractParams, decisionFunc func() error, c
 	defer func(exp exporter.Traces, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		receiver.clearCounters()
+		mockReceiver.clearCounters()
+		mockReceiver.srvStop()
 	}(exp, ctx)
-
-	receiver.setExportErrorFunction(decisionFunc)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
 		id := UniqueIDAttrVal(strconv.Itoa(i))
@@ -161,7 +164,7 @@ func checkTraces(params CheckConsumeContractParams, decisionFunc func() error, c
 		err = exp.ConsumeTraces(ctx, data)
 	}
 
-	reqCounter := receiver.getReqCounter()
+	reqCounter := mockReceiver.getReqCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items
@@ -172,13 +175,14 @@ func checkTraces(params CheckConsumeContractParams, decisionFunc func() error, c
 	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
 }
 
-func checkLogs(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, requestCounter)) {
-	receiver := params.MockReceiver
+func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Logs
 	var err error
-	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), params.Config)
+	address := mockReceiver.getListenerAddress()
+	cfg := params.Config(address)
+	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -188,10 +192,9 @@ func checkLogs(params CheckConsumeContractParams, decisionFunc func() error, che
 	defer func(exp exporter.Logs, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		receiver.clearCounters()
+		mockReceiver.clearCounters()
+		mockReceiver.srvStop()
 	}(exp, ctx)
-
-	receiver.setExportErrorFunction(decisionFunc)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
 		id := UniqueIDAttrVal(strconv.Itoa(i))
@@ -201,7 +204,7 @@ func checkLogs(params CheckConsumeContractParams, decisionFunc func() error, che
 		err = exp.ConsumeLogs(ctx, data)
 	}
 
-	reqCounter := receiver.getReqCounter()
+	reqCounter := mockReceiver.getReqCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items

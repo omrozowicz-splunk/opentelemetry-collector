@@ -34,8 +34,11 @@ type MockReceiver interface {
 	clearCounters()
 	setExportErrorFunction(decisionFunction func() error)
 	srvStop()
+	getListenerAddress() string
 	getReqCounter() requestCounter
 }
+
+type MockReceiverFactory func(DecisionFunc, component.DataType, net.Listener) MockReceiver
 
 // // randomNonPermanentErrorConsumeDecision is a decision function that succeeds approximately
 // // half of the time and fails with a non-permanent error the rest of the time.
@@ -44,6 +47,14 @@ func randomNonPermanentErrorConsumeDecision() error {
 		return errNonPermanent
 	}
 	return nil
+}
+
+// Define a function that matches the MockReceiverFactory signature
+func CreateMockOtlpReceiver(decisionFunc DecisionFunc, dataType component.DataType, ln net.Listener) MockReceiver {
+	// Implement the MockReceiver interface methods as needed
+	rcv := CreateMockReceiver(dataType, ln)
+	rcv.setExportErrorFunction(decisionFunc)
+	return rcv
 }
 
 func CreateMockReceiver(dataType component.DataType, ln net.Listener) MockReceiver {
@@ -87,6 +98,7 @@ type mockReceiver struct {
 	reqCounter          requestCounter
 	mux                 sync.Mutex
 	exportErrorFunction func() error
+	listenerAddress     string
 }
 
 type requestCounter struct {
@@ -234,11 +246,16 @@ func (r *mockReceiver) getReqCounter() requestCounter {
 	return r.reqCounter
 }
 
+func (r *mockReceiver) getListenerAddress() string {
+	return r.listenerAddress
+}
+
 func otlpMetricsReceiverOnGRPCServer(ln net.Listener) *mockMetricsReceiver {
 	rcv := &mockMetricsReceiver{
 		mockReceiver: mockReceiver{
-			srv:        grpc.NewServer(),
-			reqCounter: newRequestCounter(),
+			srv:             grpc.NewServer(),
+			reqCounter:      newRequestCounter(),
+			listenerAddress: ln.Addr().String(),
 		},
 		exportResponse: pmetricotlp.NewExportResponse,
 	}
@@ -255,8 +272,9 @@ func otlpMetricsReceiverOnGRPCServer(ln net.Listener) *mockMetricsReceiver {
 func otlpLogsReceiverOnGRPCServer(ln net.Listener) *mockLogsReceiver {
 	rcv := &mockLogsReceiver{
 		mockReceiver: mockReceiver{
-			srv:        grpc.NewServer(),
-			reqCounter: newRequestCounter(),
+			srv:             grpc.NewServer(),
+			reqCounter:      newRequestCounter(),
+			listenerAddress: ln.Addr().String(),
 		},
 		exportResponse: plogotlp.NewExportResponse,
 	}
@@ -264,7 +282,10 @@ func otlpLogsReceiverOnGRPCServer(ln net.Listener) *mockLogsReceiver {
 	// Now run it as a gRPC server
 	plogotlp.RegisterGRPCServer(rcv.srv, rcv)
 	go func() {
-		_ = rcv.srv.Serve(ln)
+		var err = rcv.srv.Serve(ln)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}()
 
 	return rcv
@@ -275,8 +296,9 @@ func otlpTracesReceiverOnGRPCServer(ln net.Listener) *mockTracesReceiver {
 
 	rcv := &mockTracesReceiver{
 		mockReceiver: mockReceiver{
-			srv:        grpc.NewServer(sopts...),
-			reqCounter: newRequestCounter(),
+			srv:             grpc.NewServer(sopts...),
+			reqCounter:      newRequestCounter(),
+			listenerAddress: ln.Addr().String(),
 		},
 		exportResponse: ptraceotlp.NewExportResponse,
 	}
