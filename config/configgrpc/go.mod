@@ -118,5 +118,3 @@ replace go.opentelemetry.io/collector/component => ../../component
 replace go.opentelemetry.io/collector/semconv => ../../semconv
 
 replace go.opentelemetry.io/collector/consumer => ../../consumer
-
-replace go.opentelemetry.io/collector/exporter/otlpexporter => ../../exporter/otlpexporter
