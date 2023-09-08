@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package otlpexporter
+package otlpexporter // import "go.opentelemetry.io/collector/exporter/otlpexporter"
 
 import (
 	"context"
@@ -24,11 +24,9 @@ type DataReceiverBase struct {
 type BaseOTLPDataReceiver struct {
 	DataReceiverBase
 	mockConsumer    *exportertest.MockConsumer
-	exporterType    string
 	traceReceiver   receiver.Traces
 	metricsReceiver receiver.Metrics
 	logReceiver     receiver.Logs
-	endpointAddress string
 }
 
 func NewOTLPDataReceiver(port int, mockConsumer *exportertest.MockConsumer) *BaseOTLPDataReceiver {

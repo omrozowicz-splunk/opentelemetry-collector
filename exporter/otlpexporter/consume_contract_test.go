@@ -5,9 +5,10 @@ package otlpexporter
 
 import (
 	"fmt"
-	"go.opentelemetry.io/collector/config/confignet"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/collector/config/confignet"
 
 	"github.com/cenkalti/backoff/v4"
 
