@@ -43,7 +43,6 @@ require (
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/collector/config/confignet v0.84.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.84.0 // indirect
 	go.opentelemetry.io/collector/confmap v0.84.0 // indirect
 	go.opentelemetry.io/collector/exporter v0.84.0 // indirect

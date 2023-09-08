@@ -47,7 +47,7 @@ func ReturnOtlpConfig(port int) component.Config {
 }
 
 // Define a function that matches the MockReceiverFactory signature
-func CreateMockOtlpReceiver(decisionFunc exportertest.DecisionFunc) exportertest.MockReceiver {
+func createMockOtlpReceiver(decisionFunc exportertest.DecisionFunc) exportertest.MockReceiver {
 	mockConsumer := exportertest.CreateDefaultConsumer(decisionFunc)
 	rcv := NewOTLPDataReceiver(DefaultOTLPPort, &mockConsumer)
 	err := rcv.Start()
@@ -67,7 +67,7 @@ func TestConsumeContractOtlpLogs(t *testing.T) {
 		DataType:             component.DataTypeLogs,
 		Config:               ReturnOtlpConfig(DefaultOTLPPort),
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  CreateMockOtlpReceiver,
+		MockReceiverFactory:  createMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)
@@ -81,7 +81,7 @@ func TestConsumeContractOtlpTraces(t *testing.T) {
 		DataType:             component.DataTypeTraces,
 		Config:               ReturnOtlpConfig(DefaultOTLPPort),
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  CreateMockOtlpReceiver,
+		MockReceiverFactory:  createMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)
@@ -95,7 +95,7 @@ func TestConsumeContractOtlpMetrics(t *testing.T) {
 		DataType:             component.DataTypeMetrics,
 		Config:               ReturnOtlpConfig(DefaultOTLPPort),
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  CreateMockOtlpReceiver,
+		MockReceiverFactory:  createMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)
