@@ -1,3 +1,6 @@
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
 package otlpexporter
 
 import (
@@ -37,6 +40,17 @@ func ReturnOtlpConfig(endpointAddress string) component.Config {
 	}
 }
 
+// Define a function that matches the MockReceiverFactory signature
+func CreateMockOtlpReceiver(decisionFunc exportertest.DecisionFunc) exportertest.MockReceiver {
+	mockConsumer := exportertest.CreateDefaultConsumer(decisionFunc)
+	rcv := NewOTLPDataReceiver(9999, mockConsumer)
+	err := rcv.Start()
+	if err != nil {
+		return nil
+	}
+	return rcv
+}
+
 // TestConsumeContract is an example of testing of the exporter for the contract between the
 // exporter and the receiver.
 func TestConsumeContractOtlpLogs(t *testing.T) {
@@ -47,7 +61,7 @@ func TestConsumeContractOtlpLogs(t *testing.T) {
 		DataType:             component.DataTypeLogs,
 		Config:               ReturnOtlpConfig,
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  exportertest.CreateMockOtlpReceiver,
+		MockReceiverFactory:  CreateMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)
@@ -61,7 +75,7 @@ func TestConsumeContractOtlpTraces(t *testing.T) {
 		DataType:             component.DataTypeTraces,
 		Config:               ReturnOtlpConfig,
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  exportertest.CreateMockOtlpReceiver,
+		MockReceiverFactory:  CreateMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)
@@ -75,7 +89,7 @@ func TestConsumeContractOtlpMetrics(t *testing.T) {
 		DataType:             component.DataTypeMetrics,
 		Config:               ReturnOtlpConfig,
 		NumberOfTestElements: 10,
-		MockReceiverFactory:  exportertest.CreateMockOtlpReceiver,
+		MockReceiverFactory:  CreateMockOtlpReceiver,
 	}
 
 	exportertest.CheckConsumeContract(params)

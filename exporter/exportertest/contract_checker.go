@@ -6,7 +6,7 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
-	"net"
+	"go.opentelemetry.io/collector/config/confignet"
 	"strconv"
 	"testing"
 
@@ -45,7 +45,7 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 	scenarios := []struct {
 		name              string
 		decisionFunc      func() error
-		checkIfTestPassed func(*testing.T, int, requestCounter)
+		checkIfTestPassed func(*testing.T, int, RequestCounter)
 	}{
 		{
 			name: "always_succeed",
@@ -78,10 +78,8 @@ func CheckConsumeContract(params CheckConsumeContractParams) {
 	}
 }
 
-func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, requestCounter)) {
-	ln, _ := net.Listen("tcp", "localhost:0")
-	//require.NoError(err, "Failed to find an available address to run the gRPC server: %v", err)
-	rcv := params.MockReceiverFactory(decisionFunc, params.DataType, ln)
+func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFunc func() error, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
+	rcv := params.MockReceiverFactory(decisionFunc)
 	switch params.DataType {
 	case component.DataTypeLogs:
 		checkLogs(params, rcv, checkIfTestPassed)
@@ -95,12 +93,12 @@ func checkConsumeContractScenario(params CheckConsumeContractParams, decisionFun
 
 }
 
-func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
+func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Metrics
 	var err error
-	address := mockReceiver.getListenerAddress()
+	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
 	cfg := params.Config(address)
 	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
@@ -112,8 +110,10 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 	defer func(exp exporter.Metrics, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		mockReceiver.clearCounters()
-		mockReceiver.srvStop()
+		err := mockReceiver.Stop()
+		if err != nil {
+			return
+		}
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
@@ -124,7 +124,7 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 		err = exp.ConsumeMetrics(ctx, data)
 	}
 
-	reqCounter := mockReceiver.getReqCounter()
+	reqCounter := mockReceiver.RequestCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items
@@ -135,12 +135,12 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
 }
 
-func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
+func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Traces
 	var err error
-	address := mockReceiver.getListenerAddress()
+	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
 	cfg := params.Config(address)
 	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
@@ -152,8 +152,10 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 	defer func(exp exporter.Traces, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		mockReceiver.clearCounters()
-		mockReceiver.srvStop()
+		err := mockReceiver.Stop()
+		if err != nil {
+			return
+		}
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
@@ -164,7 +166,7 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 		err = exp.ConsumeTraces(ctx, data)
 	}
 
-	reqCounter := mockReceiver.getReqCounter()
+	reqCounter := mockReceiver.RequestCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items
@@ -175,12 +177,12 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
 }
 
-func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, requestCounter)) {
+func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
 	ctx := context.Background()
 
 	var exp exporter.Logs
 	var err error
-	address := mockReceiver.getListenerAddress()
+	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
 	cfg := params.Config(address)
 	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), cfg)
 	require.NoError(params.T, err)
@@ -192,8 +194,10 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 	defer func(exp exporter.Logs, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		mockReceiver.clearCounters()
-		mockReceiver.srvStop()
+		err := mockReceiver.Stop()
+		if err != nil {
+			return
+		}
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
@@ -204,7 +208,7 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 		err = exp.ConsumeLogs(ctx, data)
 	}
 
-	reqCounter := mockReceiver.getReqCounter()
+	reqCounter := mockReceiver.RequestCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
 	// Successfully delivered items
@@ -216,7 +220,7 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 }
 
 // Test is successful if all the elements were received successfully and no error was returned
-func alwaysSucceedsPassed(t *testing.T, allRecordsNumber int, reqCounter requestCounter) {
+func alwaysSucceedsPassed(t *testing.T, allRecordsNumber int, reqCounter RequestCounter) {
 	require.Equal(t, allRecordsNumber, reqCounter.success)
 	require.Equal(t, reqCounter.total, allRecordsNumber)
 	require.Equal(t, reqCounter.error.nonpermanent, 0)
@@ -224,7 +228,7 @@ func alwaysSucceedsPassed(t *testing.T, allRecordsNumber int, reqCounter request
 }
 
 // Test is successful if all the elements were retried on non-permanent errors
-func randomNonPermanentErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter requestCounter) {
+func randomNonPermanentErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter RequestCounter) {
 	// more or equal tries than successes
 	require.GreaterOrEqual(t, reqCounter.total, reqCounter.success)
 	// it is retried on every error
@@ -233,13 +237,13 @@ func randomNonPermanentErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber
 }
 
 // Test is successful if the calls are not retried on permanent errors
-func randomPermanentErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter requestCounter) {
+func randomPermanentErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter RequestCounter) {
 	require.Equal(t, allRecordsNumber-reqCounter.error.permanent, reqCounter.success)
 	require.Equal(t, reqCounter.total, allRecordsNumber)
 }
 
 // Test is successful if the calls are not retried on permanent errors
-func randomErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter requestCounter) {
+func randomErrorConsumeDecisionPassed(t *testing.T, allRecordsNumber int, reqCounter RequestCounter) {
 	require.Equal(t, allRecordsNumber-reqCounter.error.permanent, reqCounter.success)
 	require.Equal(t, reqCounter.total, allRecordsNumber+reqCounter.error.nonpermanent)
 }
