@@ -6,7 +6,6 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/collector/config/confignet"
 	"strconv"
 	"testing"
 
@@ -33,7 +32,7 @@ type CheckConsumeContractParams struct {
 	// DataType to test for.
 	DataType component.DataType
 	// Config of the exporter to use.
-	Config               func(endpointAddress string) component.Config
+	Config               component.Config
 	NumberOfTestElements int
 	MockReceiverFactory  MockReceiverFactory
 }
@@ -98,9 +97,7 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 
 	var exp exporter.Metrics
 	var err error
-	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
-	cfg := params.Config(address)
-	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), cfg)
+	exp, err = params.Factory.CreateMetricsExporter(ctx, NewNopCreateSettings(), params.Config)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -110,10 +107,8 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 	defer func(exp exporter.Metrics, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		err := mockReceiver.Stop()
-		if err != nil {
-			return
-		}
+		err = mockReceiver.Stop()
+		require.NoError(params.T, err)
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
@@ -140,9 +135,7 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 
 	var exp exporter.Traces
 	var err error
-	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
-	cfg := params.Config(address)
-	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), cfg)
+	exp, err = params.Factory.CreateTracesExporter(ctx, NewNopCreateSettings(), params.Config)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -152,10 +145,8 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 	defer func(exp exporter.Traces, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		err := mockReceiver.Stop()
-		if err != nil {
-			return
-		}
+		err = mockReceiver.Stop()
+		require.NoError(params.T, err)
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {
@@ -182,9 +173,7 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 
 	var exp exporter.Logs
 	var err error
-	address := confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", 9999), Transport: "tcp"}.Endpoint
-	cfg := params.Config(address)
-	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), cfg)
+	exp, err = params.Factory.CreateLogsExporter(ctx, NewNopCreateSettings(), params.Config)
 	require.NoError(params.T, err)
 	require.NotNil(params.T, exp)
 
@@ -194,10 +183,8 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 	defer func(exp exporter.Logs, ctx context.Context) {
 		err = exp.Shutdown(ctx)
 		require.NoError(params.T, err)
-		err := mockReceiver.Stop()
-		if err != nil {
-			return
-		}
+		err = mockReceiver.Stop()
+		require.NoError(params.T, err)
 	}(exp, ctx)
 
 	for i := 0; i < params.NumberOfTestElements; i++ {

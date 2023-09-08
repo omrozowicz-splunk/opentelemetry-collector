@@ -6,6 +6,7 @@ package otlpexporter
 import (
 	"context"
 	"fmt"
+
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/exporter/exportertest"
@@ -22,41 +23,35 @@ type DataReceiverBase struct {
 
 type BaseOTLPDataReceiver struct {
 	DataReceiverBase
-	mockConsumer    exportertest.MockConsumer
+	mockConsumer    *exportertest.MockConsumer
 	exporterType    string
 	traceReceiver   receiver.Traces
 	metricsReceiver receiver.Metrics
 	logReceiver     receiver.Logs
-	mockReceiver    exportertest.MockReceiver
+	endpointAddress string
 }
 
-func NewOTLPDataReceiver(port int, mockConsumer exportertest.MockConsumer) *BaseOTLPDataReceiver {
+func NewOTLPDataReceiver(port int, mockConsumer *exportertest.MockConsumer) *BaseOTLPDataReceiver {
 	return &BaseOTLPDataReceiver{
 		mockConsumer:     mockConsumer,
 		DataReceiverBase: DataReceiverBase{Port: port},
-		exporterType:     "otlp",
 	}
 }
 
 func (bor *BaseOTLPDataReceiver) Start() error {
 	factory := otlpreceiver.NewFactory()
 	cfg := factory.CreateDefaultConfig().(*otlpreceiver.Config)
-	if bor.exporterType == "otlp" {
-		cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", bor.Port), Transport: "tcp"}
-		cfg.HTTP = nil
-	} else {
-		cfg.HTTP.Endpoint = fmt.Sprintf("127.0.0.1:%d", bor.Port)
-		cfg.GRPC = nil
-	}
+	cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", bor.Port), Transport: "tcp"}
+	cfg.HTTP = nil
 	var err error
 	set := receivertest.NewNopCreateSettings()
-	if bor.traceReceiver, err = factory.CreateTracesReceiver(context.Background(), set, cfg, &bor.mockConsumer); err != nil {
+	if bor.traceReceiver, err = factory.CreateTracesReceiver(context.Background(), set, cfg, bor.mockConsumer); err != nil {
 		return err
 	}
-	if bor.metricsReceiver, err = factory.CreateMetricsReceiver(context.Background(), set, cfg, &bor.mockConsumer); err != nil {
+	if bor.metricsReceiver, err = factory.CreateMetricsReceiver(context.Background(), set, cfg, bor.mockConsumer); err != nil {
 		return err
 	}
-	if bor.logReceiver, err = factory.CreateLogsReceiver(context.Background(), set, cfg, &bor.mockConsumer); err != nil {
+	if bor.logReceiver, err = factory.CreateLogsReceiver(context.Background(), set, cfg, bor.mockConsumer); err != nil {
 		return err
 	}
 

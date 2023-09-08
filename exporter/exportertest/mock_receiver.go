@@ -5,9 +5,10 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/collector/consumer"
 	"math/rand"
 	"sync"
+
+	"go.opentelemetry.io/collector/consumer"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -120,12 +121,6 @@ func newRequestCounter() RequestCounter {
 	}
 }
 
-func (r *MockConsumer) setExportErrorFunction(decisionFunction func() error) {
-	r.mux.Lock()
-	defer r.mux.Unlock()
-	r.exportErrorFunction = decisionFunction
-}
-
 func (r *MockConsumer) ConsumeLogs(_ context.Context, ld plog.Logs) error {
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -138,7 +133,6 @@ func (r *MockConsumer) ConsumeLogs(_ context.Context, ld plog.Logs) error {
 	}
 	fmt.Println("Successfully sent log number:", logID)
 	r.reqCounter.success++
-	//r.lastRequest = ld
 	r.ReceivedLogs = append(r.ReceivedLogs, ld)
 	return nil
 }
