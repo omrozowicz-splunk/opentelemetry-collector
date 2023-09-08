@@ -7,6 +7,33 @@ If you are looking for developer-facing changes, check out [CHANGELOG-API.md](./
 
 <!-- next version -->
 
+## v0.84.0
+
+### 💡 Enhancements 💡
+
+- `loggingexporter`: Adds exemplars logging to the logging exporter when `detailed` verbosity level is set. (#7912)
+- `configgrpc`: Allow any registered gRPC load balancer name to be used. (#8262)
+- `service`: add OTLP export for internal traces (#8106)
+- `configgrpc`: Add support for :authority pseudo-header in grpc client (#8228)
+
+### 🧰 Bug fixes 🧰
+
+- `otlphttpexporter`: Fix the handling of the HTTP response to ignore responses not encoded as protobuf (#8263)
+
+## v0.83.0
+
+### 💡 Enhancements 💡
+
+- `extension`: Add optional `ConfigWatcher` interface (#6596)
+  Extensions implementing this interface will be notified of the Collector's effective config.
+- `otelcol`: Add optional `ConfmapProvider` interface for Config Providers (#6596)
+  This allows providing the Collector's configuration as a marshaled confmap.Conf object
+  from a ConfigProvider
+  
+- `service`: Add `CollectorConf` field to `service.Settings` (#6596)
+  This field is intended to be used by the Collector to pass its effective configuration to the service.
+  
+
 ## v1.0.0-rcv0014/v0.82.0
 
 ### 🛑 Breaking changes 🛑
