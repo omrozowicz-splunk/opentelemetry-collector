@@ -19,10 +19,8 @@ import (
 	"go.opentelemetry.io/collector/exporter/exportertest"
 )
 
-const DefaultOTLPPort = 9999
-
-// NewTestRetrySettings returns the default settings for otlp exporter test.
-func NewTestRetrySettings() exporterhelper.RetrySettings {
+// newTestRetrySettings returns the default settings for otlp exporter test.
+func newTestRetrySettings() exporterhelper.RetrySettings {
 	return exporterhelper.RetrySettings{
 		Enabled: true,
 		// interval is short for the test purposes
@@ -34,13 +32,13 @@ func NewTestRetrySettings() exporterhelper.RetrySettings {
 	}
 }
 
-func ReturnOtlpConfig(port int) component.Config {
+func testConfig() component.Config {
 	return &Config{
 		TimeoutSettings: exporterhelper.TimeoutSettings{},
 		QueueSettings:   exporterhelper.QueueSettings{Enabled: false},
-		RetrySettings:   NewTestRetrySettings(),
+		RetrySettings:   newTestRetrySettings(),
 		GRPCClientSettings: configgrpc.GRPCClientSettings{
-			Endpoint: confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", port), Transport: "tcp"}.Endpoint,
+			Endpoint: confignet.NetAddr{Endpoint: fmt.Sprintf("0.0.0.0:4317"), Transport: "tcp"}.Endpoint,
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: true,
 			}},
@@ -50,7 +48,7 @@ func ReturnOtlpConfig(port int) component.Config {
 // Define a function that matches the MockReceiverFactory signature
 func createMockOtlpReceiver(decisionFunc exportertest.DecisionFunc) exportertest.MockReceiver {
 	mockConsumer := exportertest.CreateDefaultConsumer(decisionFunc)
-	rcv := NewOTLPDataReceiver(DefaultOTLPPort, &mockConsumer)
+	rcv := newOTLPDataReceiver(&mockConsumer)
 	err := rcv.Start()
 	if err != nil {
 		return nil
@@ -66,7 +64,7 @@ func TestConsumeContractOtlpLogs(t *testing.T) {
 		T:                    t,
 		Factory:              NewFactory(),
 		DataType:             component.DataTypeLogs,
-		Config:               ReturnOtlpConfig(DefaultOTLPPort),
+		Config:               testConfig(),
 		NumberOfTestElements: 10,
 		MockReceiverFactory:  createMockOtlpReceiver,
 	}
@@ -80,7 +78,7 @@ func TestConsumeContractOtlpTraces(t *testing.T) {
 		T:                    t,
 		Factory:              NewFactory(),
 		DataType:             component.DataTypeTraces,
-		Config:               ReturnOtlpConfig(DefaultOTLPPort),
+		Config:               testConfig(),
 		NumberOfTestElements: 10,
 		MockReceiverFactory:  createMockOtlpReceiver,
 	}
@@ -94,7 +92,7 @@ func TestConsumeContractOtlpMetrics(t *testing.T) {
 		T:                    t,
 		Factory:              NewFactory(),
 		DataType:             component.DataTypeMetrics,
-		Config:               ReturnOtlpConfig(DefaultOTLPPort),
+		Config:               testConfig(),
 		NumberOfTestElements: 10,
 		MockReceiverFactory:  createMockOtlpReceiver,
 	}

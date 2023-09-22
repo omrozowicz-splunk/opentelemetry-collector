@@ -6,8 +6,10 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -127,7 +129,10 @@ func checkMetrics(params CheckConsumeContractParams, mockReceiver MockReceiver, 
 	// Number of errors that happened
 	fmt.Printf("Number of permanent errors: %d\n", reqCounter.error.permanent)
 	fmt.Printf("Number of non-permanent errors: %d\n", reqCounter.error.nonpermanent)
-	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+
+	assert.EventuallyWithT(params.T, func(c *assert.CollectT) {
+		checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
@@ -157,6 +162,7 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 		err = exp.ConsumeTraces(ctx, data)
 	}
 
+	fmt.Println("Before request Counter")
 	reqCounter := mockReceiver.RequestCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
@@ -165,7 +171,11 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 	// Number of errors that happened
 	fmt.Printf("Number of permanent errors: %d\n", reqCounter.error.permanent)
 	fmt.Printf("Number of non-permanent errors: %d\n", reqCounter.error.nonpermanent)
-	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+	//checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+
+	assert.EventuallyWithT(params.T, func(c *assert.CollectT) {
+		checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, checkIfTestPassed func(*testing.T, int, RequestCounter)) {
@@ -203,7 +213,10 @@ func checkLogs(params CheckConsumeContractParams, mockReceiver MockReceiver, che
 	// Number of errors that happened
 	fmt.Printf("Number of permanent errors: %d\n", reqCounter.error.permanent)
 	fmt.Printf("Number of non-permanent errors: %d\n", reqCounter.error.nonpermanent)
-	checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+
+	assert.EventuallyWithT(params.T, func(c *assert.CollectT) {
+		checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 // Test is successful if all the elements were received successfully and no error was returned
