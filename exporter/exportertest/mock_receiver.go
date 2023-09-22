@@ -8,11 +8,10 @@ import (
 	"math/rand"
 	"sync"
 
-	"go.opentelemetry.io/collector/consumer"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"

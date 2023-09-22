@@ -5,6 +5,7 @@ package otlpexporter // import "go.opentelemetry.io/collector/exporter/otlpexpor
 
 import (
 	"context"
+
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/exporter/exportertest"
 	"go.opentelemetry.io/collector/receiver"
@@ -28,7 +29,6 @@ func newOTLPDataReceiver(mockConsumer *exportertest.MockConsumer) *mockOtlpRecei
 func (bor *mockOtlpReceiver) Start() error {
 	factory := otlpreceiver.NewFactory()
 	cfg := factory.CreateDefaultConfig().(*otlpreceiver.Config)
-	//cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: fmt.Sprintf("127.0.0.1:%d", bor.port), Transport: "tcp"}
 	cfg.HTTP = nil
 	var err error
 	set := receivertest.NewNopCreateSettings()

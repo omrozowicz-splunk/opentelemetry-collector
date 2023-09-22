@@ -6,11 +6,11 @@ package exportertest // import "go.opentelemetry.io/collector/exporter/exportert
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/collector/component"
@@ -171,7 +171,6 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 	// Number of errors that happened
 	fmt.Printf("Number of permanent errors: %d\n", reqCounter.error.permanent)
 	fmt.Printf("Number of non-permanent errors: %d\n", reqCounter.error.nonpermanent)
-	//checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)
 
 	assert.EventuallyWithT(params.T, func(c *assert.CollectT) {
 		checkIfTestPassed(params.T, params.NumberOfTestElements, reqCounter)

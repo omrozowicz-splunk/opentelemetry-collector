@@ -4,7 +4,6 @@
 package otlpexporter
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -38,7 +37,7 @@ func testConfig() component.Config {
 		QueueSettings:   exporterhelper.QueueSettings{Enabled: false},
 		RetrySettings:   newTestRetrySettings(),
 		GRPCClientSettings: configgrpc.GRPCClientSettings{
-			Endpoint: confignet.NetAddr{Endpoint: fmt.Sprintf("0.0.0.0:4317"), Transport: "tcp"}.Endpoint,
+			Endpoint: confignet.NetAddr{Endpoint: "0.0.0.0:4317", Transport: "tcp"}.Endpoint,
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: true,
 			}},
