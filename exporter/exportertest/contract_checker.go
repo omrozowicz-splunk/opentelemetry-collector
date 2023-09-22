@@ -162,7 +162,6 @@ func checkTraces(params CheckConsumeContractParams, mockReceiver MockReceiver, c
 		err = exp.ConsumeTraces(ctx, data)
 	}
 
-	fmt.Println("Before request Counter")
 	reqCounter := mockReceiver.RequestCounter()
 	// The overall number of requests sent by exporter
 	fmt.Printf("Number of export tries: %d\n", reqCounter.total)
